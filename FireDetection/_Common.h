@@ -14,10 +14,10 @@ using namespace cv;
 #define BLACK_COLOR   (Scalar(0, 0, 0))
 #define WHITE_COLOR   (Scalar(255, 255, 255))
 
-#define TO_RADIAN 0.01745329252 
-#define TO_DEGREE 57.295779513
+//#define TO_RADIAN 0.01745329252 
+//#define TO_DEGREE 57.295779513
 
-#define SHOW_PROCESS
+//#define SHOW_PROCESS
 
 extern uint FireNumToFind;
 extern Mat ProbabilityMap;
@@ -260,10 +260,12 @@ inline vector<uchar> findMatches(vector<Point2f>& query_points, vector<Point2f>&
    extractor->compute( target, target_keypoints, target_descriptor );
    cout << "Query Descriptor Size: " << query_descriptor.rows << endl;
 
-   vector< vector<DMatch> > matches;
-   const Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create("BruteForce");
-   matcher->knnMatch( query_descriptor, target_descriptor, matches, 20 );
-   cout << "Match Size: " << matches.size() << endl;  
+   vector<vector<DMatch>> matches;
+   if (query_descriptor.cols == target_descriptor.cols) {
+      const Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create("BruteForce");
+      matcher->knnMatch( query_descriptor, target_descriptor, matches, 20 );
+      cout << "Match Size: " << matches.size() << endl;  
+   }
 
    query_points.clear();
    target_points.clear();
