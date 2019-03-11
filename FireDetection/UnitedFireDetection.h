@@ -5,8 +5,6 @@
 #include "CovarianceFireDetection.h"
 #include "FlowRateFireDetection.h"
 
-//#include "IntellivixFireDetection.h"
-
 class UnitedFireDetection
 {
    Mat ProcessResult;
@@ -20,10 +18,11 @@ class UnitedFireDetection
    void balanceColor(Mat& balanced_frame, const Mat& frame) const;
    void extractForeground(Mat& foreground, const Mat& frame);
    void extractFireColorPixelsOnly(Mat& fire_color_region, const Mat& frame, const Mat& mask) const;
-   void extractFireColorCandidates(vector<Rect>& fires, Mat& fire_color_region, const Mat& frame);
+   void extractFireColorRegion(vector<Rect>& fires, Mat& fire_color_region, const Mat& frame);
+   void transformOriginalFirePosition(vector<Rect>& fires) const;
    void drawAllCandidates(const vector<Rect>& fires, const Scalar& box_color, const int& extended_size);
-   void setFireRegion(Mat& fire_region, const vector<Rect>& fires, const Mat& frame) const;
-   void findIntersection(vector<Rect>& intersection, const vector<vector<Rect>>& sets, const Mat& frame) const;
+   void setFireRegion(Mat& fire_region, const vector<Rect>& fires) const;
+   void findIntersection(vector<Rect>& intersection, const vector<vector<Rect>>& sets) const;
 
 
 public:

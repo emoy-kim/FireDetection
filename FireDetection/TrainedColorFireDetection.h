@@ -28,12 +28,12 @@ class TrainedColorFireDetection
    bool isLocalMaximum(const int& curr_idx, const double* upper_ptr, const double* curr_ptr, const double* lower_ptr) const;
    void findTopProbabilities(vector<pair<Point, double>>& local_maxima);
    void findTopOfLocalMaxima(const Mat& probability_map);
-   void classifyColorAndMotion(const Mat& resized_frame);
+   void classifyColorAndMotion(const Mat& frame);
 
    void createBlocksFromCandidates(Mat& result_map, const int& block_size);
    void updateResultMapAndFireRegion(Mat& fire_region);
 
-   void getFirePosition(vector<Rect>& fires, const Mat& fire_region, const Mat& frame) const;
+   void getFirePosition(vector<Rect>& fires, const Mat& fire_region) const;
 
 
 public:

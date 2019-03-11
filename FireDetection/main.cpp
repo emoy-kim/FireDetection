@@ -109,7 +109,7 @@ void runTestSet(const vector<string>& testset, const double& analysis_fps)
       const int height = static_cast<int>(cam.get( CV_CAP_PROP_FRAME_HEIGHT ));
       cout << "*** TEST SET(" << width << " x " << height << "): " << test_data.c_str() << "***" << endl;
 
-      UnitedFireDetection fire_detector( 10 );
+      UnitedFireDetection fire_detector( 5 );
       playVideoAndDetectFire( cam, fire_detector, analysis_fps );
       cam.release();
    }

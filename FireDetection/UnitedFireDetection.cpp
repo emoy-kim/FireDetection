@@ -77,7 +77,7 @@ void UnitedFireDetection::extractFireColorPixelsOnly(Mat& fire_color_region, con
    morphologyEx( fire_color_region, fire_color_region, MORPH_CLOSE, circle_elem );
 }
 
-void UnitedFireDetection::extractFireColorCandidates(vector<Rect>& fires, Mat& fire_color_region, const Mat& frame)
+void UnitedFireDetection::extractFireColorRegion(vector<Rect>& fires, Mat& fire_color_region, const Mat& frame)
 {
    Mat foreground;
    extractForeground( foreground, frame );
@@ -88,7 +88,7 @@ void UnitedFireDetection::extractFireColorCandidates(vector<Rect>& fires, Mat& f
    findContours( contoured, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE );
    
    vector<FireCandidate> candidates;
-   for (auto const &contour : contours) {
+   for (const auto& contour : contours) {
       FireCandidate candidate;
       candidate.Region = boundingRect( Mat(contour) );
       candidates.emplace_back( candidate );
@@ -96,9 +96,29 @@ void UnitedFireDetection::extractFireColorCandidates(vector<Rect>& fires, Mat& f
    extractFromCandidates( fires, candidates );
 }
 
+void UnitedFireDetection::transformOriginalFirePosition(vector<Rect>& fires) const
+{
+   const Point2d to_frame(
+      ProcessResult.cols / static_cast<double>(AnalysisFrameSize.width),
+      ProcessResult.rows / static_cast<double>(AnalysisFrameSize.height)
+   );
+   for (auto& rect : fires) {
+      rect = Rect(
+         Point(
+            static_cast<int>(round( rect.tl().x * to_frame.x )), 
+            static_cast<int>(round( rect.tl().y * to_frame.y ))
+         ),
+         Point(
+            static_cast<int>(round( rect.br().x * to_frame.x )), 
+            static_cast<int>(round( rect.br().y * to_frame.y ))
+         )
+      );
+   }
+}
+
 void UnitedFireDetection::drawAllCandidates(const vector<Rect>& fires, const Scalar& box_color, const int& extended_size)
 {
-   for (auto const &candidate : fires) {
+   for (const auto& candidate : fires) {
       rectangle( 
          ProcessResult, 
          Rect(
@@ -113,21 +133,21 @@ void UnitedFireDetection::drawAllCandidates(const vector<Rect>& fires, const Sca
    }
 }
 
-void UnitedFireDetection::setFireRegion(Mat& fire_region, const vector<Rect>& fires, const Mat& frame) const
+void UnitedFireDetection::setFireRegion(Mat& fire_region, const vector<Rect>& fires) const
 {
-   fire_region = Mat::zeros( frame.size(), CV_8UC1 );
-   for (auto const &rect : fires) {
+   fire_region = Mat::zeros( ProcessResult.size(), CV_8UC1 );
+   for (const auto& rect : fires) {
       fire_region(rect) = 255;
    }
 }
 
-void UnitedFireDetection::findIntersection(vector<Rect>& intersection, const vector<vector<Rect>>& sets, const Mat& frame) const
+void UnitedFireDetection::findIntersection(vector<Rect>& intersection, const vector<vector<Rect>>& sets) const
 {
    Mat common;
-   setFireRegion( common, sets[0], frame );
+   setFireRegion( common, sets[0] );
    for (uint i = 1; i < sets.size(); ++i) {
       Mat region;
-      setFireRegion( region, sets[i], frame );
+      setFireRegion( region, sets[i] );
       common &= region;
    }
    
@@ -151,28 +171,34 @@ void UnitedFireDetection::detectFire(vector<Rect>& fires, const Mat& frame)
    balanceColor( balanced_frame, resized_frame );
 
    Mat fire_region;
-   extractFireColorCandidates( fires, fire_region, balanced_frame );
+   extractFireColorRegion( fires, fire_region, balanced_frame );
 
    TrainedColorBasedDetector->detectFire( fires, fire_region, balanced_frame );
 
-   vector<Rect> RCH_results(fires);
-   RedChannelBasedDetector->detectFire( RCH_results, fire_region, balanced_frame );
-   drawAllCandidates( RCH_results, MAGENTA_COLOR, 4 );
+   vector<Rect> result_from_r_channel(fires);
+   RedChannelBasedDetector->detectFire( result_from_r_channel, fire_region, balanced_frame );
+   transformOriginalFirePosition( result_from_r_channel );
+   drawAllCandidates( result_from_r_channel, MAGENTA_COLOR, 4 );
 
-   vector<Rect> COV_results(fires);
-   CovarianceBasedDetector->detectFire( COV_results, fire_region, balanced_frame );
-   drawAllCandidates( COV_results, YELLOW_COLOR, 8 );
+   vector<Rect> result_from_covariance(fires);
+   CovarianceBasedDetector->detectFire( result_from_covariance, fire_region, balanced_frame );
+   transformOriginalFirePosition( result_from_covariance );
+   drawAllCandidates( result_from_covariance, YELLOW_COLOR, 8 );
 
-   vector<Rect> FLR_results(fires);
-   FlowRateBasedDetector->detectFire( FLR_results, fire_region, balanced_frame );
-   drawAllCandidates( FLR_results, CYAN_COLOR, 12 );
-   
-   const vector<vector<Rect>> results = { RCH_results, COV_results, FLR_results };
-   findIntersection( fires, results, balanced_frame );
+   vector<Rect> result_from_flow_rate(fires);
+   FlowRateBasedDetector->detectFire( result_from_flow_rate, fire_region, balanced_frame );
+   transformOriginalFirePosition( result_from_flow_rate );
+   drawAllCandidates( result_from_flow_rate, CYAN_COLOR, 12 );
+ 
+   const vector<vector<Rect>> results = { 
+      result_from_r_channel, 
+      result_from_covariance, 
+      result_from_flow_rate 
+   };
+   findIntersection( fires, results );
    drawAllCandidates( fires, RED_COLOR, 16 );
    
    imshow( "Process Result", ProcessResult );
-   imshow( "Fire Region", fire_region );
 }
 
 void UnitedFireDetection::informOfSceneChanged() const

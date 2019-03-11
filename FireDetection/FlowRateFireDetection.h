@@ -6,14 +6,16 @@ class FlowRateFireDetection
 {
    struct FlowRateCandidate : FireCandidate
    {
+      int CandidateIndex;
+      double MaxFlowLength;
       Point2f MinFlowPoint;
       Point2f MaxFlowPoint;
-      double MaxFlowLength;
       Mat Deltas;
       vector<Mat> FrameHistory;
-#ifdef SHOW_PROCESS
-      int CandidateIndex;
-#endif
+
+      FlowRateCandidate() : CandidateIndex( -1 ), MaxFlowLength( -1.0 ), 
+      MinFlowPoint{ 1e+7f, 1e+7f }, MaxFlowPoint{ -1.0f, -1.0f } {}
+      FlowRateCandidate(const Rect& region) : FlowRateCandidate() { Region = region; }
    };
 
    uint FrameCounter;
@@ -22,12 +24,12 @@ class FlowRateFireDetection
    const float PCAOutlierXThreshold;
 
    Mat PrevFrame;
-   vector<FlowRateCandidate> FlowRateInfos;
-   vector<Rect> FireCandidates;
+   vector<Rect> PrevDetectedFires;
+   vector<FlowRateCandidate> FlowRateCandidates;
 
 #ifdef SHOW_PROCESS
    Mat ProcessResult;
-   void drawFlow(FlowRateCandidate& candidate, const vector<Point2f>& query_points, const vector<Point2f>& target_points, const vector<uchar>& found_mathces) const;
+   void drawFlow(FlowRateCandidate& candidate, const vector<Point2f>& query_points, const vector<Point2f>& target_points, const vector<uchar>& found_matches) const;
    void displayFlows(const FlowRateCandidate& candidate) const;
    void shutdownOutlierMaps() const;
    void drawMarkings(Mat& outlier_map, const Point2f& scale_factor) const;
@@ -36,25 +38,24 @@ class FlowRateFireDetection
 
    void initialize();
    
-   bool initializeFireCandidateInfos(const vector<Rect>& fires, const Mat& frame);
+   bool initializeFireCandidates(const vector<Rect>& fires);
 
-   void updateMaxFlowLength(FlowRateCandidate& candidate, const vector<Point2f>& query_points, const vector<Point2f>& target_points, const vector<uchar>& found_mathces) const;
-   void updateFlowDeltas(FlowRateCandidate& candidate, const vector<Point2f>& query_points, const vector<Point2f>& target_points, const vector<uchar>& found_mathces) const;
-   void findMinMaxFlowPoint(FlowRateCandidate& candidate, const vector<Point2f>& query_points, const vector<Point2f>& target_points, const vector<uchar>& found_mathces) const;
+   void updateMaxFlowLength(FlowRateCandidate& candidate, const vector<Point2f>& query_points, const vector<Point2f>& target_points, const vector<uchar>& found_matches) const;
+   void updateFlowDeltas(FlowRateCandidate& candidate, const vector<Point2f>& query_points, const vector<Point2f>& target_points, const vector<uchar>& found_matches) const;
+   void findMinMaxFlowPoint(FlowRateCandidate& candidate, const vector<Point2f>& query_points, const vector<Point2f>& target_points, const vector<uchar>& found_matches) const;
    void calculateFlowRate(FlowRateCandidate& candidate, const Mat& frame, const Mat& fire_region) const;
    float getPCAOutlierYThreshold(const vector<Point2f>& outlier_map_points) const;
    void getPCAOutlierMapPoints(vector<Point2f>& outlier_map_points, PCA& pca, const FlowRateCandidate& candidate) const;
-   Mat removePCAOutlier(PCA& pca, const FlowRateCandidate& candidate) const;
+   void extractPCAInlierOnly(PCA& pca, Mat& inlier, const FlowRateCandidate& candidate) const;
    void getEigenvalues(vector<float>& eigenvalues, const FlowRateCandidate& candidate) const;
    bool isTurbulentEnough(const FlowRateCandidate& candidate) const;
    void removeNonTurbulentRegion();
-   void classifyFlowRate(const Mat& frame, const Mat& fire_region);
-
-   void getFirePosition(vector<Rect>& fires, const Mat& frame);
+   void classifyFlowRate(vector<Rect>& fires, const Mat& frame, const Mat& fire_region);
 
 
 public:
    FlowRateFireDetection();
+   ~FlowRateFireDetection() = default;
 
    void detectFire(vector<Rect>& fires, const Mat& fire_region, const Mat& frame);
    void informOfSceneChanged();

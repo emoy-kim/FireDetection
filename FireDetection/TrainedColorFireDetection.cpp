@@ -27,7 +27,7 @@ void TrainedColorFireDetection::initialize()
 #ifdef SHOW_PROCESS
 void TrainedColorFireDetection::showProcess(const Scalar& box_color)
 {
-   for (auto const &candidate : FireColorCandidates) {
+   for (const auto& candidate : FireColorCandidates) {
       rectangle(
          ProcessResult,
          Rect(
@@ -129,10 +129,10 @@ void TrainedColorFireDetection::findTopOfLocalMaxima(const Mat& probability_map)
    findTopProbabilities( local_maxima );
 }
 
-void TrainedColorFireDetection::classifyColorAndMotion(const Mat& resized_frame)
+void TrainedColorFireDetection::classifyColorAndMotion(const Mat& frame)
 {
    Mat blurred_frame;
-   GaussianBlur( resized_frame, blurred_frame, Size(11, 11), 0.1 );
+   GaussianBlur( frame, blurred_frame, Size(11, 11), 0.1 );
 
    Mat probability_map = Mat::zeros( blurred_frame.size(), CV_64FC1 );
    findMovingPixels( probability_map, blurred_frame );
@@ -173,20 +173,16 @@ void TrainedColorFireDetection::updateResultMapAndFireRegion(Mat& fire_region)
 #endif
 }
 
-void TrainedColorFireDetection::getFirePosition(vector<Rect>& fires, const Mat& fire_region, const Mat& frame) const
+void TrainedColorFireDetection::getFirePosition(vector<Rect>& fires, const Mat& fire_region) const
 {
    vector<vector<Point>> contours;
    Mat contoured = fire_region.clone();
    findContours( contoured, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE );
 
-   const Point2d to_frame(
-      frame.cols / static_cast<double>(AnalysisFrameSize.width), 
-      frame.rows / static_cast<double>(AnalysisFrameSize.height)
-   );
+   fires.clear();
    if (contours.size() <= FireNumToFind) {
       for (const auto& contour : contours) {
-         const Rect fire = boundingRect( Mat(contour) );
-         fires.emplace_back( transformFireBoundingBox( fire, to_frame ) );
+         fires.emplace_back( boundingRect( Mat(contour) ) );
       }
    }
    else {
@@ -198,7 +194,7 @@ void TrainedColorFireDetection::getFirePosition(vector<Rect>& fires, const Mat& 
 
       for (uint i = 0; i < FireNumToFind; ++i) {
          const int max_index = findIndexWithMaxOfSecondValues( probabilities );
-         fires.emplace_back( transformFireBoundingBox( probabilities[max_index].first, to_frame ) );
+         fires.emplace_back( probabilities[max_index].first );
 
          probabilities.erase( probabilities.begin() + max_index );
       }
@@ -216,7 +212,7 @@ void TrainedColorFireDetection::detectFire(vector<Rect>& fires, Mat& fire_region
    if (!FireColorCandidates.empty()) {
       updateResultMapAndFireRegion( fire_region );
 
-      getFirePosition( fires, fire_region, frame );
+      getFirePosition( fires, fire_region );
       resize( fire_region, fire_region, frame.size() );
    }
 }

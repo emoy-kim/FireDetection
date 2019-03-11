@@ -14,9 +14,6 @@ using namespace cv;
 #define BLACK_COLOR   (Scalar(0, 0, 0))
 #define WHITE_COLOR   (Scalar(255, 255, 255))
 
-//#define TO_RADIAN 0.01745329252 
-//#define TO_DEGREE 57.295779513
-
 //#define SHOW_PROCESS
 
 extern uint FireNumToFind;
@@ -38,14 +35,6 @@ inline int printText(const int& color_code, char const* text, ...)
    return result;
 }
 */
-
-inline Rect transformFireBoundingBox(const Rect& fire, const Point2d& scale_factor)
-{
-   return Rect(
-      Point(static_cast<int>(round(fire.tl().x * scale_factor.x)), static_cast<int>(round(fire.tl().y * scale_factor.y))),
-      Point(static_cast<int>(round(fire.br().x * scale_factor.x)), static_cast<int>(round(fire.br().y * scale_factor.y)))
-   );
-}
 
 inline uint countThisValue(const uchar& val, const Mat& region)
 {
@@ -258,13 +247,11 @@ inline vector<uchar> findMatches(vector<Point2f>& query_points, vector<Point2f>&
    Ptr<DescriptorExtractor> extractor = ORB::create();
    extractor->compute( query, query_keypoints, query_descriptor );
    extractor->compute( target, target_keypoints, target_descriptor );
-   cout << "Query Descriptor Size: " << query_descriptor.rows << endl;
-
+   
    vector<vector<DMatch>> matches;
    if (query_descriptor.cols == target_descriptor.cols) {
       const Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create("BruteForce");
       matcher->knnMatch( query_descriptor, target_descriptor, matches, 20 );
-      cout << "Match Size: " << matches.size() << endl;  
    }
 
    query_points.clear();
@@ -282,6 +269,5 @@ inline vector<uchar> findMatches(vector<Point2f>& query_points, vector<Point2f>&
          }
       }
    }
-   cout << "Size: " << query_keypoints.size() << endl;  
    return vector<uchar>(query_points.size(), 1);
 }
