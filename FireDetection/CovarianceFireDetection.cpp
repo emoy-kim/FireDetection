@@ -11,7 +11,7 @@ void CovarianceFireDetection::initialize()
    FrameCounter = 0;
    OneStepPrevFrame.release();
    TwoStepPrevFrame.release();
-   FireCandidates.clear();
+   PrevDetectedFires.clear();
 #ifdef SHOW_PROCESS
    destroyAllWindows();
 #endif
@@ -28,7 +28,7 @@ void CovarianceFireDetection::destroyExistingWindows(const string& prefix_name) 
    }
 }
 
-void CovarianceFireDetection::displayMatches(const CovarianceCandidate& candidate, const vector<Point2f>& query_points, const vector<Point2f>& target_points, const vector<uchar>& found_mathces) const
+void CovarianceFireDetection::displayMatches(const CovarianceCandidate& candidate, const vector<Point2f>& query_points, const vector<Point2f>& target_points, const vector<uchar>& found_matches) const
 {
    const Mat fire_mask = FireRegionMask(candidate.Region);
    Mat query, target;
@@ -40,10 +40,10 @@ void CovarianceFireDetection::displayMatches(const CovarianceCandidate& candidat
 
    Scalar query_color, target_color;
    for (uint i = 0; i < query_points.size(); ++i) {
-      if (found_mathces[i]) {
-         if (found_mathces[i] == TOO_CLOSE_MATCHES) {
-            query_color = WHITE_COLOR;//BLACK_COLOR;
-            target_color = WHITE_COLOR;//BLACK_COLOR;
+      if (found_matches[i]) {
+         if (found_matches[i] == TOO_CLOSE_MATCHES) {
+            query_color = WHITE_COLOR;
+            target_color = WHITE_COLOR;
          }
          else {
             query_color = RED_COLOR;
@@ -89,32 +89,22 @@ void CovarianceFireDetection::displayHistory(const CovarianceCandidate& candidat
 }
 #endif
 
-bool CovarianceFireDetection::initializeFireCandidateInfos(const vector<Rect>& fires, const Mat& frame, const Mat& fire_region)
+bool CovarianceFireDetection::initializeFireCandidates(const vector<Rect>& fires, const Mat& fire_region)
 {
    if (fires.empty()) return false;
 
    EigenvalueMap = Mat::zeros( ProbabilityMap.size(), CV_64FC1 );
    FireRegionMask = fire_region.clone();
 
-   CovFeatureInfos.clear();
-   const Point2d to_analysis_frame(
-      AnalysisFrameSize.width / static_cast<double>(frame.cols), 
-      AnalysisFrameSize.height / static_cast<double>(frame.rows)
-   );
-   for (auto const &rect : fires) {
-      const Rect region = transformFireBoundingBox( rect, to_analysis_frame );
-      if (isRegionBigEnough( region )) {
-         CovarianceCandidate candidate;
-         candidate.Region = region;
-         candidate.MaxFeatureSimilarity = -1.0;
-         candidate.MinFlowPoint = Point2f(1e+7f, 1e+7f);
-         candidate.MaxFlowPoint = Point2f(-1.0f, -1.0f);
-         CovFeatureInfos.emplace_back( candidate );
+   CovFeatureCandidates.clear();
+   for (const auto& rect : fires) {
+      if (isRegionBigEnough( rect )) {
+         CovFeatureCandidates.emplace_back( rect );
       }
    }
 #ifdef SHOW_PROCESS
-   for(uint i = 0; i < CovFeatureInfos.size(); ++i) {
-      CovFeatureInfos[i].CandidateIndex = i;
+   for(uint i = 0; i < CovFeatureCandidates.size(); ++i) {
+      CovFeatureCandidates[i].CandidateIndex = i;
    }
 #endif
    return true;
@@ -155,8 +145,8 @@ void CovarianceFireDetection::getRGBCovariance(vector<double>& rgb_covariance, c
    vector<double> sums(3, 0.0), square_of_mean(6, 0.0);
    uint valid_num = 0;
    for (int j = 1; j < fire_mask.rows - 1; ++j) {
-      auto const mask_ptr = fire_mask.ptr<uchar>(j);
-      auto const fire_ptr = fire_area.ptr<Vec3b>(j);
+      const auto* mask_ptr = fire_mask.ptr<uchar>(j);
+      const auto* fire_ptr = fire_area.ptr<Vec3b>(j);
       for (int i = 1; i < fire_mask.cols - 1; ++i) {
          if (mask_ptr[i]) {
             const vector<double> rgb_feature = {
@@ -213,7 +203,7 @@ void CovarianceFireDetection::getSpatioTemporalCovariance(vector<double>& st_cov
    getCovariance( st_covariance, sums, square_of_mean, valid_num );
 }
 
-void CovarianceFireDetection::getCovarianceFeature(vector<double>& features, const Mat& resized_frame, const Rect& fire_box) const
+void CovarianceFireDetection::getCovarianceFeature(vector<double>& features, const Mat& frame, const Rect& fire_box) const
 {
    const Mat fire_mask = FireRegionMask(fire_box);
 
@@ -223,7 +213,7 @@ void CovarianceFireDetection::getCovarianceFeature(vector<double>& features, con
    vector<Mat> area_set(3);
    cvtColor( TwoStepPrevFrame(fire_box), area_set[0], CV_BGR2GRAY );
    cvtColor( OneStepPrevFrame(fire_box), area_set[1], CV_BGR2GRAY );
-   cvtColor( resized_frame(fire_box), area_set[2], CV_BGR2GRAY );
+   cvtColor( frame(fire_box), area_set[2], CV_BGR2GRAY );
 
    vector<double> st_covariance;
    getSpatioTemporalCovariance( st_covariance, area_set, fire_mask );
@@ -249,10 +239,10 @@ void CovarianceFireDetection::updateMaxSimilarityAndIndex(CovarianceCandidate& c
    }
 }
 
-void CovarianceFireDetection::findMinMaxFlowPoint(CovarianceCandidate& candidate, const vector<Point2f>& query_points, const vector<Point2f>& target_points, const vector<uchar>& found_mathces) const
+void CovarianceFireDetection::findMinMaxFlowPoint(CovarianceCandidate& candidate, const vector<Point2f>& query_points, const vector<Point2f>& target_points, const vector<uchar>& found_matches) const
 {
    for (uint i = 0; i < query_points.size(); ++i) {
-      if (found_mathces[i]) {
+      if (found_matches[i]) {
          if (query_points[i].x < candidate.MinFlowPoint.x) candidate.MinFlowPoint.x = query_points[i].x;
          if (query_points[i].x > candidate.MaxFlowPoint.x) candidate.MaxFlowPoint.x = query_points[i].x;
          if (target_points[i].x < candidate.MinFlowPoint.x) candidate.MinFlowPoint.x = target_points[i].x;
@@ -265,7 +255,6 @@ void CovarianceFireDetection::findMinMaxFlowPoint(CovarianceCandidate& candidate
       }
    }
 }
-
 
 bool CovarianceFireDetection::getDeltasFromSparseOpticalFlowMatches(CovarianceCandidate& candidate, const Mat& query, const Mat& target) const
 {
@@ -301,125 +290,12 @@ bool CovarianceFireDetection::getDeltasFromSparseOpticalFlowMatches(CovarianceCa
    return true;
 }
 
-#ifdef SHOW_PROCESS
-void CovarianceFireDetection::shutdownOutlierMaps() const
-{
-   for (uint i = 0; i < CovFeatureInfos.size(); ++i) {
-      destroyWindow( "COV Outlier Map" + to_string( i ) );
-   }
-}
-
-void CovarianceFireDetection::drawMarkings(Mat& outlier_map, const Point2f& scale_factor) const
-{
-   for (int i = 1; ; ++i) {
-      auto const x_marking = static_cast<const uint>(round(i * scale_factor.x));
-      if (x_marking >= static_cast<uint>(outlier_map.cols)) break;
-      line( outlier_map, Point(x_marking, 0), Point(x_marking, 10), BLACK_COLOR, 1 );
-      putText( outlier_map, to_string(i), Point(x_marking, 15), 2, 0.5, BLACK_COLOR );
-   }
-   for (int i = 1; ; ++i) {
-      auto const y_marking = static_cast<const uint>(round(i * scale_factor.y));
-      if (y_marking >= static_cast<uint>(outlier_map.rows)) break;
-      line( outlier_map, Point(0, y_marking), Point(10, y_marking), BLACK_COLOR, 1 );
-      putText( outlier_map, to_string(i), Point(15, y_marking), 2, 0.5, BLACK_COLOR );
-   }
-}
-
-void CovarianceFireDetection::drawPCAOutlierMap(const PCA& pca, const vector<Point2f>& outlier_map_points, const int& candidate_index) const
-{
-   Mat outlier_map(400, 400, CV_8UC3, WHITE_COLOR);
-   float max_x = -1.0f, max_y = -1.0f;
-   for (auto const &point : outlier_map_points) {
-      if (point.x > max_x) max_x = point.x;
-      if (point.y > max_y) max_y = point.y;
-   }
-   if (max_x < 1e-7f || max_y < 1e-7f) return;
-
-   const Point2f scale_factor(outlier_map.cols * 0.8f / max_x, outlier_map.rows * 0.8f / max_y);
-   drawMarkings( outlier_map, scale_factor );
-
-   for (auto const &point : outlier_map_points) {
-      const Point scaled_point(
-         static_cast<int>(round(point.x * scale_factor.x)), 
-         static_cast<int>(round(point.y * scale_factor.y))
-      );
-      if (scaled_point.x < 0 || scaled_point.y < 0 || 
-         scaled_point.x >= outlier_map.cols || scaled_point.y >= outlier_map.rows)
-         continue;
-      circle( outlier_map, scaled_point, 5, BLUE_COLOR );
-   }
-
-   const auto x_threshold = static_cast<int>(round(2.744f * scale_factor.x));
-   line( outlier_map, Point(x_threshold, 0), Point(x_threshold, outlier_map.rows), RED_COLOR );
-   imshow( "COV Outlier Map" + to_string( candidate_index ), outlier_map );
-}
-#endif
-
-float CovarianceFireDetection::getPCAOutlierYThreshold(const vector<Point2f>& outlier_map_points) const
-{
-   float y_mean = 0.0f;
-   for (auto const &point : outlier_map_points) {
-      y_mean += point.y;
-   }
-   if (!outlier_map_points.empty()) {
-      y_mean /= outlier_map_points.size();
-   }
-   return y_mean * 6.0f;
-}
-
-void CovarianceFireDetection::getPCAOutlierMapPoints(vector<Point2f>& outlier_map_points, PCA& pca, const CovarianceCandidate& candidate) const
-{
-   const int& data_num = candidate.Deltas.rows;
-   outlier_map_points.resize( data_num );
-
-   const Mat mean_col_major = pca.mean.t();
-   for (int i = 0; i < data_num; ++i) {
-      const Mat direction_vector = candidate.Deltas.rowRange( i, i + 1 ).t() - mean_col_major;
-      const Mat dot_productions = pca.eigenvectors * direction_vector;
-      auto const orthogonal_distance = 
-         static_cast<const float>(norm( direction_vector - pca.eigenvectors.t() * dot_productions, NORM_L2 ));
-      float score_distance = 0.0f;
-      for (int d = 0; d < dot_productions.rows; ++d) {
-         auto const projected_length_ptr = dot_productions.ptr<float>(d);
-         auto const eigenvalue_ptr = pca.eigenvalues.ptr<float>(d);
-         if (eigenvalue_ptr[0] > 1e-7f) {
-            score_distance += projected_length_ptr[0] * projected_length_ptr[0] / eigenvalue_ptr[0];
-         }
-      }
-      score_distance = sqrt( score_distance );
-      outlier_map_points[i].x = score_distance;
-      outlier_map_points[i].y = orthogonal_distance;
-   }
-#ifdef SHOW_PROCESS
-   drawPCAOutlierMap( pca, outlier_map_points, candidate.CandidateIndex );
-#endif
-}
-
-Mat CovarianceFireDetection::removePCAOutlier(PCA& pca, const CovarianceCandidate& candidate) const
-{
-   vector<Point2f> outlier_map_points;
-   getPCAOutlierMapPoints( outlier_map_points, pca, candidate );
-
-   Mat inlier;
-   const float pca_y_threshold = getPCAOutlierYThreshold( outlier_map_points );
-   for (uint i = 0; i < outlier_map_points.size(); ++i) {
-      if (outlier_map_points[i].x < 2.0f ||
-          outlier_map_points[i].y < pca_y_threshold) {
-         inlier.push_back( candidate.Deltas.rowRange( i, i + 1 ) );
-      }
-   }
-   return inlier;
-}
-
 void CovarianceFireDetection::getEigenvaluesOfCovariance(vector<float>& eigenvalues, const CovarianceCandidate& candidate) const
 {
    eigenvalues.resize(2, 0.0f);
    if (candidate.Deltas.rows < 2) return;
    PCA pca(candidate.Deltas, Mat(), CV_PCA_DATA_AS_ROW);
    
-   //const Mat inlier = removePCAOutlier( pca, candidate );
-   //pca(inlier, Mat(), CV_PCA_DATA_AS_ROW);
-
    for (int i = 0; i < pca.eigenvalues.rows; ++i) {
       eigenvalues[i] = pca.eigenvalues.at<float>(i, 0);
    }
@@ -428,8 +304,8 @@ void CovarianceFireDetection::getEigenvaluesOfCovariance(vector<float>& eigenval
 bool CovarianceFireDetection::areEigenvaluesSmallAndSimilar(vector<float>& eigenvalues, const float& threshold) const
 {
    bool is_similar = false;
-   if (eigenvalues[0] < 55.0f) {
-      is_similar = eigenvalues[0] < threshold || eigenvalues[0] < eigenvalues[1] * 2.0f;
+   if (eigenvalues[0] < 50.0f) {
+      is_similar = eigenvalues[0] < threshold || eigenvalues[0] < eigenvalues[1] * 1.5f;
    }
    return is_similar;
 }
@@ -437,37 +313,25 @@ bool CovarianceFireDetection::areEigenvaluesSmallAndSimilar(vector<float>& eigen
 float CovarianceFireDetection::getAdaptiveEigenValueThreshold(const CovarianceCandidate& candidate) const
 {
    float max_variance = 1e+7f;
-   if (candidate.MinFlowPoint.x <= candidate.MaxFlowPoint.x) {
+   if (candidate.MinFlowPoint.x < candidate.MaxFlowPoint.x) {
       const float width = candidate.MaxFlowPoint.x - candidate.MinFlowPoint.x;
       const float height = candidate.MaxFlowPoint.y - candidate.MinFlowPoint.y;
       max_variance = (width * width + height * height) * 0.25f;
    }
 
-   float threshold;
-   if (candidate.MaxFeatureSimilarity < 0.95) {
-      threshold = static_cast<float>(max_variance * candidate.MaxFeatureSimilarity * 0.1);
-   }
-   else {
-      threshold = static_cast<float>(max_variance * candidate.MaxFeatureSimilarity * 0.2);
-   }
+   const auto threshold = static_cast<float>(max_variance * candidate.MaxFeatureSimilarity * 0.0005);
    return threshold;
 }
 
-bool CovarianceFireDetection::isMoving(const Mat& query, const Mat& target, const Mat& mask) const
+bool CovarianceFireDetection::isStaticObject(const Mat& query, const Mat& target, const Mat& mask) const
 {
-   if (query.cols == 0 || query.rows == 0) return false;
+   if (query.cols == 0 || query.rows == 0) return true;
    
    const int valid_num = countNonZero(mask);
-   if (valid_num == 0) return false;
+   if (valid_num == 0) return true;
 
-   const double psnr = PSNR( query, target );
-   const bool is_moving = psnr <= 33.0;
-   printf("COV Moving [PSNR]: %f\n", psnr);
-
-   //const double norm_difference = norm( query, target, NORM_L2, mask ) / sqrt( valid_num );
-   //const bool is_moving = psnr <= 33.0 && norm_difference >= 5.0;
-   //printf("COV Moving [NORM]: %f\n", norm_difference);
-   return is_moving;
+   const bool is_static = PSNR( query, target ) > 33.0;
+   return is_static;
 }
 
 bool CovarianceFireDetection::isFeatureRepeated(CovarianceCandidate& candidate)
@@ -477,7 +341,7 @@ bool CovarianceFireDetection::isFeatureRepeated(CovarianceCandidate& candidate)
    cvtColor( candidate.FrameHistory[candidate.SimilarPairIndices.second], target, CV_BGR2GRAY );
 
    bool repeated = true;
-   if (!isMoving( query, target, FireRegionMask(candidate.Region) )) return repeated;
+   if (isStaticObject( query, target, FireRegionMask(candidate.Region) )) return repeated;
 
    query.resize( 256, 256 );
    target.resize( 256, 256 );
@@ -488,9 +352,11 @@ bool CovarianceFireDetection::isFeatureRepeated(CovarianceCandidate& candidate)
       getEigenvaluesOfCovariance( eigenvalues, candidate );
       const float threshold = getAdaptiveEigenValueThreshold( candidate );
       repeated = areEigenvaluesSmallAndSimilar( eigenvalues, threshold );
+#ifdef SHOW_PROCESS
       cout << "===[CovarianceFireDetection]=======================================" << endl;
       cout << "Eigenvalues: " << eigenvalues[0] << ", " << eigenvalues[1] << "(#candidates: " << candidate.Deltas.rows << ")" << endl;
       cout << "Similarity: " << candidate.MaxFeatureSimilarity << "(threshold: " << threshold << ")" << endl;
+#endif
       EigenvalueMap(candidate.Region).setTo( static_cast<double>(eigenvalues[0]), FireRegionMask(candidate.Region) );
    }
 
@@ -508,9 +374,9 @@ void CovarianceFireDetection::removeRepeatedRegion()
    destroyExistingWindows( "Candidate History" );
 #endif
    Mat result_map = Mat::zeros( ProbabilityMap.size(), CV_64FC1 );
-   for (auto it = CovFeatureInfos.begin(); it != CovFeatureInfos.end();) {
+   for (auto it = CovFeatureCandidates.begin(); it != CovFeatureCandidates.end();) {
       if (isFeatureRepeated( *it )) {
-         it = CovFeatureInfos.erase( it );
+         it = CovFeatureCandidates.erase( it );
       }
       else {
          result_map(it->Region) = 1.0;
@@ -522,40 +388,27 @@ void CovarianceFireDetection::removeRepeatedRegion()
    ProbabilityMap = result_map.mul( EigenvalueMap ) + ProbabilityMap.mul( 1.0 - EigenvalueMap );
 }
 
-void CovarianceFireDetection::classifyCovariance(const Mat& resized_frame)
+void CovarianceFireDetection::classifyCovariance(vector<Rect>& fires, const Mat& frame)
 {
-   for (auto &candidate : CovFeatureInfos) {
+   for (auto& candidate : CovFeatureCandidates) {
       vector<double> covariance_features;
-      getCovarianceFeature( covariance_features, resized_frame, candidate.Region );
+      getCovarianceFeature( covariance_features, frame, candidate.Region );
       updateMaxSimilarityAndIndex( candidate, covariance_features );
       candidate.FeatureHistory.emplace_back( covariance_features );
       candidate.FrameHistory.emplace_back( OneStepPrevFrame(candidate.Region) );
    }
 
    if (FrameCounter == CovarianceAnalysisPeriod - 1) {
-#ifdef SHOW_PROCESS
-      shutdownOutlierMaps();
-#endif
       removeRepeatedRegion();
-      extractFromCandidates( FireCandidates, CovFeatureInfos );
+      extractFromCandidates( PrevDetectedFires, CovFeatureCandidates );
       FrameCounter = 0;
    }
    else FrameCounter++;
+
+   fires = PrevDetectedFires;
 #ifdef SHOW_PROCESS
    imshow( "Covariance Classifier", ProcessResult );
 #endif
-}
-
-void CovarianceFireDetection::getFirePosition(vector<Rect>& fires, const Mat& frame)
-{
-   fires.clear();
-   const Point2d to_frame(
-      frame.cols / static_cast<double>(AnalysisFrameSize.width),
-      frame.rows / static_cast<double>(AnalysisFrameSize.height)
-   );
-   for (auto const &candidate : FireCandidates) {
-      fires.emplace_back( transformFireBoundingBox( candidate, to_frame ) );
-   }
 }
 
 void CovarianceFireDetection::detectFire(vector<Rect>& fires, const Mat& fire_region, const Mat& frame)
@@ -568,13 +421,12 @@ void CovarianceFireDetection::detectFire(vector<Rect>& fires, const Mat& fire_re
    if (OneStepPrevFrame.empty()) { OneStepPrevFrame = frame.clone(); return; }
 
    if (FrameCounter == 0) {
-      const bool keep_going = initializeFireCandidateInfos( fires, frame, fire_region );
+      const bool keep_going = initializeFireCandidates( fires, fire_region );
       if (!keep_going) return;
    }
-   classifyCovariance( frame );
 
-   getFirePosition( fires, frame );
-   
+   classifyCovariance( fires, frame );
+
    TwoStepPrevFrame = OneStepPrevFrame.clone();
    OneStepPrevFrame = frame.clone();
 }
@@ -582,9 +434,4 @@ void CovarianceFireDetection::detectFire(vector<Rect>& fires, const Mat& fire_re
 void CovarianceFireDetection::informOfSceneChanged()
 {
    initialize();
-}
-
-void CovarianceFireDetection::setFireRegionNumToFind(const int& fire_num) const
-{
-   FireNumToFind = fire_num;
 }

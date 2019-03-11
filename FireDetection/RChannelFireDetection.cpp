@@ -2,7 +2,7 @@
 
 RChannelFireDetection::RChannelFireDetection() :
    FrameCounter( 0 ), RChannelAnalysisPeriod( 14 ),
-   MinPerturbingThreshold( 1.5 * static_cast<double>(RChannelAnalysisPeriod - 1) )
+   MinPerturbingThreshold( 2.0 * static_cast<double>(RChannelAnalysisPeriod - 1) )
 {
    initialize();
 }
@@ -10,7 +10,7 @@ RChannelFireDetection::RChannelFireDetection() :
 void RChannelFireDetection::initialize()
 {
    FrameCounter = 0;
-   FireCandidates.clear();
+   PrevDetectedFires.clear();
 #ifdef SHOW_PROCESS
    destroyAllWindows();
 #endif
@@ -31,11 +31,11 @@ void RChannelFireDetection::displayHistogram(const Mat& histogram, const Mat& fi
       );
    }
    const uint gradation = 200 / RChannelAnalysisPeriod;
-   for (uint i = 0; i < RChannelInfos[index].MeanPerturbation.size(); ++i) {
+   for (uint i = 0; i < RChannelCandidates[index].MeanPerturbation.size(); ++i) {
       line(
          histogram_graph, 
-         Point(bin_size * static_cast<int>(RChannelInfos[index].MeanPerturbation[i]), 0), 
-         Point(bin_size * static_cast<int>(RChannelInfos[index].MeanPerturbation[i]), histogram_viewer.height), 
+         Point(bin_size * static_cast<int>(RChannelCandidates[index].MeanPerturbation[i]), 0), 
+         Point(bin_size * static_cast<int>(RChannelCandidates[index].MeanPerturbation[i]), histogram_viewer.height), 
          BLUE_COLOR - Scalar(gradation * i, 0, 0), 2
       );
    }
@@ -47,41 +47,34 @@ void RChannelFireDetection::displayHistogram(const Mat& histogram, const Mat& fi
 
 void RChannelFireDetection::shutdownHistogram() const
 {
-   for (uint i = 0; i < RChannelInfos.size(); ++i) {
+   for (uint i = 0; i < RChannelCandidates.size(); ++i) {
       destroyWindow( "Histogram Graph" + to_string( i ) );
    }
 }
 #endif
 
-bool RChannelFireDetection::initializeFireCandidateInfos(const vector<Rect>& fires, const Mat& frame)
+bool RChannelFireDetection::initializeFireCandidates(const vector<Rect>& fires)
 {
    if (fires.empty()) {
       return false;
    }
    
-   RChannelInfos.clear();
-   const Point2d to_analysis_frame(
-      AnalysisFrameSize.width / static_cast<double>(frame.cols), 
-      AnalysisFrameSize.height / static_cast<double>(frame.rows)
-   );
+   RChannelCandidates.clear();
    for (const auto& rect : fires) {
-      const Rect region = transformFireBoundingBox( rect, to_analysis_frame );
-      if (isRegionBigEnough( region )) {
-         RChannelCandidate candidate;
-         candidate.Region = region;
-         RChannelInfos.emplace_back( candidate );
+      if (isRegionBigEnough( rect )) {
+         RChannelCandidates.emplace_back( rect );
       }
    }
    return true;
 }
 
-Mat RChannelFireDetection::getNormalizedHistogram(const Mat& rchannel, const Mat& mask) const
+Mat RChannelFireDetection::getNormalizedHistogram(const Mat& r_channel, const Mat& mask) const
 {
    Mat histogram;
    const int hist_size = 256;
    const float range[2] = { 0.0f, 256.0f };
    const float* hist_range = range;
-   calcHist( &rchannel, 1, nullptr, mask, histogram, 1, &hist_size, &hist_range );
+   calcHist( &r_channel, 1, nullptr, mask, histogram, 1, &hist_size, &hist_range );
    normalizeMap( histogram );
    return histogram;
 }
@@ -89,9 +82,9 @@ Mat RChannelFireDetection::getNormalizedHistogram(const Mat& rchannel, const Mat
 double RChannelFireDetection::calculateWeightedMean(const Mat& histogram, const float& min_frequency) const
 {
    double mean = 0.0;
-   float sum_of_frequency_left_out = 0.0f;
+   double sum_of_frequency_left_out = 0.0f;
    for (int i = 0; i < histogram.rows; ++i) {
-      const auto frequency = histogram.at<float>(i);
+      const auto frequency = static_cast<double>(histogram.at<float>(i));
       if (frequency > min_frequency) {
          mean += static_cast<double>(i) * frequency;
       }
@@ -116,7 +109,6 @@ bool RChannelFireDetection::isPerturbingEnough(const RChannelCandidate& candidat
    getMeanAndStandardDeviation( mean, standard_deviation, candidate.MeanPerturbation );
    const double standard_deviation_threshold = 
       sqrt( candidate.Region.width * candidate.Region.width + candidate.Region.height * candidate.Region.height ) * 0.4;
-   
    return 
       amount_of_perturbing > MinPerturbingThreshold && 
       (mean >= 150.0 || standard_deviation > standard_deviation_threshold);
@@ -124,7 +116,7 @@ bool RChannelFireDetection::isPerturbingEnough(const RChannelCandidate& candidat
 
 void RChannelFireDetection::removeNonPerturbedRegion()
 {
-   for (auto it = RChannelInfos.begin(); it != RChannelInfos.end();) {
+   for (auto it = RChannelCandidates.begin(); it != RChannelCandidates.end();) {
       if (isPerturbingEnough( *it, 0.0 )) {
 #ifdef SHOW_PROCESS
          rectangle( ProcessResult, it->Region, RED_COLOR, 2 );
@@ -135,22 +127,22 @@ void RChannelFireDetection::removeNonPerturbedRegion()
 #ifdef SHOW_PROCESS
          rectangle( ProcessResult, it->Region, BLUE_COLOR, 2 );
 #endif
-         it = RChannelInfos.erase( it );
+         it = RChannelCandidates.erase( it );
       }
    }
 }
 
-void RChannelFireDetection::classifyRChannelHistogram(const Mat& frame, const Mat& fire_region)
+void RChannelFireDetection::classifyRChannelHistogram(vector<Rect>& fires, const Mat& frame, const Mat& fire_region)
 {
    vector<Mat> channels(3);
    split( frame, channels );
    Mat& r_channel = channels[2];
 
-   for (uint i = 0; i < RChannelInfos.size(); ++i) {
-      const Mat histogram = getNormalizedHistogram( r_channel(RChannelInfos[i].Region), fire_region(RChannelInfos[i].Region) );
-      RChannelInfos[i].MeanPerturbation.emplace_back( calculateWeightedMean( histogram, 0.0f ) );
+   for (auto& candidate : RChannelCandidates) {
+      const Mat histogram = getNormalizedHistogram( r_channel(candidate.Region), fire_region(candidate.Region) );
+      candidate.MeanPerturbation.emplace_back( calculateWeightedMean( histogram, 0.0f ) );
 #ifdef SHOW_PROCESS
-      displayHistogram( histogram, frame(RChannelInfos[i].Region), fire_region(RChannelInfos[i].Region), i );
+      displayHistogram( histogram, frame(candidate.Region), fire_region(candidate.Region), i );
 #endif
    }
 
@@ -159,25 +151,15 @@ void RChannelFireDetection::classifyRChannelHistogram(const Mat& frame, const Ma
       shutdownHistogram();
 #endif
       removeNonPerturbedRegion();
-      extractFromCandidates( FireCandidates, RChannelInfos );
+      extractFromCandidates( PrevDetectedFires, RChannelCandidates );
       FrameCounter = 0;
    }
    else FrameCounter++;
+
+   fires = PrevDetectedFires;
 #ifdef SHOW_PROCESS
    imshow( "Red-Channel Classification Result", ProcessResult );
 #endif
-}
-
-void RChannelFireDetection::getFirePosition(vector<Rect>& fires, const Mat& frame)
-{
-   fires.clear();
-   const Point2d to_frame(
-      frame.cols / static_cast<double>(AnalysisFrameSize.width),
-      frame.rows / static_cast<double>(AnalysisFrameSize.height)
-   );
-   for (const auto& candidate : FireCandidates) {
-      fires.emplace_back( transformFireBoundingBox( candidate, to_frame ) );
-   }
 }
 
 void RChannelFireDetection::detectFire(vector<Rect>& fires, const Mat& fire_region, const Mat& frame)
@@ -187,13 +169,11 @@ void RChannelFireDetection::detectFire(vector<Rect>& fires, const Mat& fire_regi
 #endif
    
    if (FrameCounter == 0) {
-      const bool keep_going = initializeFireCandidateInfos( fires, frame );
+      const bool keep_going = initializeFireCandidates( fires );
       if (!keep_going) return;
    }
 
-   classifyRChannelHistogram( frame, fire_region );
-
-   getFirePosition( fires, frame );
+   classifyRChannelHistogram( fires, frame, fire_region );
 }
 
 void RChannelFireDetection::informOfSceneChanged()

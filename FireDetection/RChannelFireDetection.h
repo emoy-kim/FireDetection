@@ -7,15 +7,18 @@ class RChannelFireDetection
    struct RChannelCandidate : FireCandidate
    {
       vector<double> MeanPerturbation;
+
+      RChannelCandidate() = default;
+      RChannelCandidate(const Rect& region) { Region = region; }
    };
 
    uint FrameCounter;
 
    const uint RChannelAnalysisPeriod;
    const double MinPerturbingThreshold;
-   
-   vector<RChannelCandidate> RChannelInfos;
-   vector<Rect> FireCandidates;
+
+   vector<Rect> PrevDetectedFires;
+   vector<RChannelCandidate> RChannelCandidates;
 
 #ifdef SHOW_PROCESS
    Mat ProcessResult;
@@ -25,15 +28,13 @@ class RChannelFireDetection
 
    void initialize();
 
-   bool initializeFireCandidateInfos(const vector<Rect>& fires, const Mat& frame);
+   bool initializeFireCandidates(const vector<Rect>& fires);
 
-   Mat getNormalizedHistogram(const Mat& rchannel, const Mat& mask) const;
+   Mat getNormalizedHistogram(const Mat& r_channel, const Mat& mask) const;
    double calculateWeightedMean(const Mat& histogram, const float& min_frequency = 0.0f) const;
    bool isPerturbingEnough(const RChannelCandidate& candidate, const double& min_intensity = 0.0) const;
    void removeNonPerturbedRegion();
-   void classifyRChannelHistogram(const Mat& frame, const Mat& fire_region);
-
-   void getFirePosition(vector<Rect>& fires, const Mat& frame);
+   void classifyRChannelHistogram(vector<Rect>& fires, const Mat& frame, const Mat& fire_region);
 
 
 public:
