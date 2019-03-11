@@ -143,6 +143,20 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CovarianceFireDetection.cpp" />
+    <ClCompile Include="FlowRateFireDetection.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="RChannelFireDetection.cpp" />
+    <ClCompile Include="TrainedColorFireDetection.cpp" />
+    <ClCompile Include="UnitedFireDetection.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="CovarianceFireDetection.h" />
+    <ClInclude Include="FlowRateFireDetection.h" />
+    <ClInclude Include="RChannelFireDetection.h" />
+    <ClInclude Include="TrainedColorFireDetection.h" />
+    <ClInclude Include="UnitedFireDetection.h" />
+    <ClInclude Include="_Common.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
