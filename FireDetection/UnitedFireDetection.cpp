@@ -202,8 +202,6 @@ void UnitedFireDetection::detectFire(vector<Rect>& fires, const Mat& frame)
    drawAllCandidates( fires, RED_COLOR, 16 );
    
    imshow( "Process Result", ProcessResult );
-
-   imwrite("result.png", ProcessResult);
 }
 
 void UnitedFireDetection::informOfSceneChanged() const
