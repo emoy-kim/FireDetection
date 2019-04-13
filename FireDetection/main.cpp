@@ -8,7 +8,11 @@ void getTestset(vector<string>& testset)
    testset = {
       "VideoSamples/test1.avi",
       "VideoSamples/test2.avi",
-      "VideoSamples/test3.avi"
+      "VideoSamples/test3.avi",
+      "VideoSamples/test4.avi",
+      "VideoSamples/test5.avi",
+      "VideoSamples/test6.avi",
+      "VideoSamples/test7.avi",
    };
 }
 

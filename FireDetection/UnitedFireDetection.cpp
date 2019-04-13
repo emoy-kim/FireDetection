@@ -18,6 +18,9 @@ UnitedFireDetection::UnitedFireDetection(const uint& max_fire_num_to_find)
 
 void UnitedFireDetection::balanceColor(Mat& balanced_frame, const Mat& frame) const
 {
+   balanced_frame = frame.clone();
+   return;
+      
    Mat frame_d;
    frame.convertTo( frame_d, CV_64FC3 );
 
@@ -199,6 +202,8 @@ void UnitedFireDetection::detectFire(vector<Rect>& fires, const Mat& frame)
    drawAllCandidates( fires, RED_COLOR, 16 );
    
    imshow( "Process Result", ProcessResult );
+
+   imwrite("result.png", ProcessResult);
 }
 
 void UnitedFireDetection::informOfSceneChanged() const

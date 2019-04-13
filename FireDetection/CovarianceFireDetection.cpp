@@ -34,8 +34,8 @@ void CovarianceFireDetection::displayMatches(const CovarianceCandidate& candidat
    Mat query, target;
    candidate.FrameHistory[candidate.SimilarPairIndices.first].copyTo(query, fire_mask);
    candidate.FrameHistory[candidate.SimilarPairIndices.second].copyTo(target, fire_mask);
-   query.resize( 256, 256 );
-   target.resize( 256, 256 );
+   resize( query, query, Size(256, 256) );
+   resize( target, target, Size(256, 256) );
    Mat unite = query.clone();
 
    Scalar query_color, target_color;
@@ -81,10 +81,9 @@ void CovarianceFireDetection::displayHistory(const CovarianceCandidate& candidat
       box_color, 2 
    );
 
-   cout << "===[CovarianceFireDetection]=======================================" << endl;
    cout << "[" << "candidate.CandidateIndex" << "] " << candidate.SimilarPairIndices.first << "-th image is the most similar to ";
-   cout << candidate.SimilarPairIndices.second << "-th one as " << candidate.MaxFeatureSimilarity << "." << endl; 
-   
+   cout << candidate.SimilarPairIndices.second << "-th one as " << candidate.MaxFeatureSimilarity << ".\n"; 
+   namedWindow( "Candidate History" + to_string( candidate.CandidateIndex ), 0 );
    imshow( "Candidate History" + to_string( candidate.CandidateIndex ), history_viewer );
 }
 #endif
@@ -260,9 +259,9 @@ bool CovarianceFireDetection::getDeltasFromSparseOpticalFlowMatches(CovarianceCa
 {
    vector<Point2f> query_points, history_points;
    Mat fire_mask = FireRegionMask(candidate.Region);
-   fire_mask.resize( 256, 256 );
-   //vector<uchar> found_matches = findMatchesUsingOpticalFlowLK( query_points, history_points, query, target, fire_mask );
-   vector<uchar> found_matches = findMatches( query_points, history_points, query, target, fire_mask );
+   resize( fire_mask, fire_mask, Size(256, 256) );
+   vector<uchar> found_matches = findMatchesUsingOpticalFlowLK( query_points, history_points, query, target, fire_mask );
+   //vector<uchar> found_matches = findMatches( query_points, history_points, query, target, fire_mask );
 
    if (query_points.empty()) return false;
 
@@ -292,7 +291,7 @@ bool CovarianceFireDetection::getDeltasFromSparseOpticalFlowMatches(CovarianceCa
 
 void CovarianceFireDetection::getEigenvaluesOfCovariance(vector<float>& eigenvalues, const CovarianceCandidate& candidate) const
 {
-   eigenvalues.resize(2, 0.0f);
+   eigenvalues.resize( 2, 0.0f );
    if (candidate.Deltas.rows < 2) return;
    PCA pca(candidate.Deltas, Mat(), CV_PCA_DATA_AS_ROW);
    
@@ -316,10 +315,10 @@ float CovarianceFireDetection::getAdaptiveEigenValueThreshold(const CovarianceCa
    if (candidate.MinFlowPoint.x < candidate.MaxFlowPoint.x) {
       const float width = candidate.MaxFlowPoint.x - candidate.MinFlowPoint.x;
       const float height = candidate.MaxFlowPoint.y - candidate.MinFlowPoint.y;
-      max_variance = (width * width + height * height) * 0.25f;
+      max_variance = (width * width + height * height) * 0.00025f;
    }
 
-   const auto threshold = static_cast<float>(max_variance * candidate.MaxFeatureSimilarity * 0.0005);
+   const auto threshold = static_cast<float>(max_variance * candidate.MaxFeatureSimilarity);
    return threshold;
 }
 
@@ -343,8 +342,8 @@ bool CovarianceFireDetection::isFeatureRepeated(CovarianceCandidate& candidate)
    bool repeated = true;
    if (isStaticObject( query, target, FireRegionMask(candidate.Region) )) return repeated;
 
-   query.resize( 256, 256 );
-   target.resize( 256, 256 );
+   resize( query, query, Size(256, 256) );
+   resize( target, target, Size(256, 256) );
    const bool matches_exist = getDeltasFromSparseOpticalFlowMatches( candidate, query, target );
 
    if (matches_exist) {
@@ -353,9 +352,9 @@ bool CovarianceFireDetection::isFeatureRepeated(CovarianceCandidate& candidate)
       const float threshold = getAdaptiveEigenValueThreshold( candidate );
       repeated = areEigenvaluesSmallAndSimilar( eigenvalues, threshold );
 #ifdef SHOW_PROCESS
-      cout << "===[CovarianceFireDetection]=======================================" << endl;
-      cout << "Eigenvalues: " << eigenvalues[0] << ", " << eigenvalues[1] << "(#candidates: " << candidate.Deltas.rows << ")" << endl;
-      cout << "Similarity: " << candidate.MaxFeatureSimilarity << "(threshold: " << threshold << ")" << endl;
+      cout << "\n===[CovarianceFireDetection]=======================================\n";
+      cout << "Eigenvalues: " << eigenvalues[0] << ", " << eigenvalues[1] << "(#candidates: " << candidate.Deltas.rows << ")\n";
+      cout << "Similarity: " << candidate.MaxFeatureSimilarity << "(threshold: " << threshold << ")\n";
 #endif
       EigenvalueMap(candidate.Region).setTo( static_cast<double>(eigenvalues[0]), FireRegionMask(candidate.Region) );
    }

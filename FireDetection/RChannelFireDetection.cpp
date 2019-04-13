@@ -138,11 +138,11 @@ void RChannelFireDetection::classifyRChannelHistogram(vector<Rect>& fires, const
    split( frame, channels );
    Mat& r_channel = channels[2];
 
-   for (auto& candidate : RChannelCandidates) {
-      const Mat histogram = getNormalizedHistogram( r_channel(candidate.Region), fire_region(candidate.Region) );
-      candidate.MeanPerturbation.emplace_back( calculateWeightedMean( histogram, 0.0f ) );
+   for (uint i = 0; i < RChannelCandidates.size(); ++i) {
+      const Mat histogram = getNormalizedHistogram( r_channel(RChannelCandidates[i].Region), fire_region(RChannelCandidates[i].Region) );
+      RChannelCandidates[i].MeanPerturbation.emplace_back( calculateWeightedMean( histogram, 0.0f ) );
 #ifdef SHOW_PROCESS
-      displayHistogram( histogram, frame(candidate.Region), fire_region(candidate.Region), i );
+      displayHistogram( histogram, frame(RChannelCandidates[i].Region), fire_region(RChannelCandidates[i].Region), i );
 #endif
    }
 

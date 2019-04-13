@@ -32,6 +32,7 @@ void FlowRateFireDetection::displayFlows(const FlowRateCandidate& candidate) con
 {
    Mat matches_viewer;
    hconcat( candidate.FrameHistory, matches_viewer );
+   namedWindow( "Flow Rate History" + to_string( candidate.CandidateIndex ), 0 );
    imshow( "Flow Rate History" + to_string( candidate.CandidateIndex ), matches_viewer );
 }
 #endif
