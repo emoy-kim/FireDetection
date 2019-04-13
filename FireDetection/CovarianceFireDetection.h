@@ -1,3 +1,18 @@
+﻿/*
+ * Author: Emoy Kim
+ * E-mail: emoy.kim_AT_gmail.com
+ * 
+ * This code is a free software; it can be freely used, changed and redistributed.
+ * If you use any version of the code, please reference the code.
+ * 
+ * The fire features are from the idea of [1].
+ * 
+ * [1] Hakan Habiboğlu, Yusuf & Günay, Osman & Cetin, A.,
+ *    Covariance matrix-based fire and flame detection method in video. 
+ *    Machine Vision and Applications. 23. 1-11. 10.1007/s00138-011-0369-1. 
+ * 
+ */
+
 #pragma once
 
 #include "_Common.h"

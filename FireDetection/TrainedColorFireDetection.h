@@ -1,3 +1,15 @@
+/*
+ * Author: Emoy Kim
+ * E-mail: emoy.kim_AT_gmail.com
+ * 
+ * This code is a modified implementation of the part of [1].
+ * 
+ * [1] J. Choi and J. Y. Choi, Patch-based fire detection with online outlier learning, 
+ *    2015 12th IEEE International Conference on Advanced Video and Signal Based Surveillance (AVSS), 
+ *    Karlsruhe, 2015, pp. 1-6.
+ * 
+ */
+
 #pragma once
 
 #include "_Common.h"
