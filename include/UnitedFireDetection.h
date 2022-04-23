@@ -22,7 +22,7 @@ public:
    UnitedFireDetection& operator=(const UnitedFireDetection&) = delete;
    UnitedFireDetection& operator=(const UnitedFireDetection&&) = delete;
 
-   UnitedFireDetection(const uint& max_fire_num_to_find);
+   explicit UnitedFireDetection(const uint& max_fire_num_to_find);
    ~UnitedFireDetection() = default;
 
    void detectFire(std::vector<cv::Rect>& fires, const cv::Mat& frame);
@@ -37,9 +37,9 @@ private:
    std::unique_ptr<CovarianceFireDetection> CovarianceBasedDetector;
    std::unique_ptr<FlowRateFireDetection> FlowRateBasedDetector;
    
-   void balanceColor(cv::Mat& balanced_frame, const cv::Mat& frame) const;
+   static void balanceColor(cv::Mat& balanced_frame, const cv::Mat& frame);
    void extractForeground(cv::Mat& foreground, const cv::Mat& frame);
-   void extractFireColorPixelsOnly(cv::Mat& fire_color_region, const cv::Mat& frame, const cv::Mat& mask) const;
+   static void extractFireColorPixelsOnly(cv::Mat& fire_color_region, const cv::Mat& frame, const cv::Mat& mask);
    void extractFireColorRegion(std::vector<cv::Rect>& fires, cv::Mat& fire_color_region, const cv::Mat& frame);
    void transformOriginalFirePosition(std::vector<cv::Rect>& fires) const;
    void drawAllCandidates(const std::vector<cv::Rect>& fires, const cv::Scalar& box_color, int extended_size);

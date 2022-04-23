@@ -12,7 +12,7 @@ UnitedFireDetection::UnitedFireDetection(const uint& max_fire_num_to_find)
    FlowRateBasedDetector = std::make_unique<FlowRateFireDetection>();
 }
 
-void UnitedFireDetection::balanceColor(cv::Mat& balanced_frame, const cv::Mat& frame) const
+void UnitedFireDetection::balanceColor(cv::Mat& balanced_frame, const cv::Mat& frame)
 {
    balanced_frame = frame.clone();
    return;
@@ -52,7 +52,7 @@ void UnitedFireDetection::extractFireColorPixelsOnly(
    cv::Mat& fire_color_region, 
    const cv::Mat& frame, 
    const cv::Mat& mask
-) const
+)
 {
    const int min_r = 140;
    const int min_difference_r_and_g = 15;

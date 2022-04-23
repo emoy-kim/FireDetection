@@ -42,7 +42,7 @@ private:
 
       CovarianceCandidate() : CandidateIndex( -1 ), MaxFeatureSimilarity( -1.0 ),
       MinFlowPoint{ 1e+7f, 1e+7f }, MaxFlowPoint{ -1.0f, -1.0f } {}
-      CovarianceCandidate(const cv::Rect& region) : CovarianceCandidate() { Region = region; }
+      explicit CovarianceCandidate(const cv::Rect& region) : CovarianceCandidate() { Region = region; }
    };
 
    uint FrameCounter;
@@ -81,32 +81,32 @@ private:
       const std::vector<double>& squares, 
       int num
    );
-   void getRGBCovariance(std::vector<double>& rgb_covariance, const cv::Mat& fire_area, const cv::Mat& fire_mask) const;
+   static void getRGBCovariance(std::vector<double>& rgb_covariance, const cv::Mat& fire_area, const cv::Mat& fire_mask);
    static void getSpatioTemporalFeatures(
       std::vector<double>& features, 
       const std::vector<const uchar*>& spatio_ptrs, 
       const std::vector<const uchar*>& temporal_ptrs, 
       int center_x
    );
-   void getSpatioTemporalCovariance(
+   static void getSpatioTemporalCovariance(
       std::vector<double>& st_covariance, 
       const std::vector<cv::Mat>& fire_area_set, 
       const cv::Mat& fire_mask
-   ) const;
+   );
    void getCovarianceFeature(std::vector<double>& features, const cv::Mat& frame, const cv::Rect& fire_box) const;
    static void updateMaxSimilarityAndIndex(CovarianceCandidate& candidate, const std::vector<double>& features);
-   void findMinMaxFlowPoint(
+   static void findMinMaxFlowPoint(
       CovarianceCandidate& candidate, 
       const std::vector<cv::Point2f>& query_points, 
       const std::vector<cv::Point2f>& target_points, 
       const std::vector<uchar>& found_matches
-   ) const;
-   bool getDeltasFromSparseOpticalFlowMatches(CovarianceCandidate& candidate, const cv::Mat& query, const cv::Mat& target) const;
-   void getEigenvaluesOfCovariance(std::vector<float>& eigenvalues, const CovarianceCandidate& candidate) const;
-   static bool areEigenvaluesSmallAndSimilar(std::vector<float>& eigenvalues, float threshold);
-   float getAdaptiveEigenValueThreshold(const CovarianceCandidate& candidate) const;
-   bool isStaticObject(const cv::Mat& query, const cv::Mat& target, const cv::Mat& mask) const;
-   bool isFeatureRepeated(CovarianceCandidate& candidate);
+   );
+   [[nodiscard]] bool getDeltasFromSparseOpticalFlowMatches(CovarianceCandidate& candidate, const cv::Mat& query, const cv::Mat& target) const;
+   static void getEigenvaluesOfCovariance(std::vector<float>& eigenvalues, const CovarianceCandidate& candidate);
+   [[nodiscard]] static bool areEigenvaluesSmallAndSimilar(std::vector<float>& eigenvalues, float threshold);
+   [[nodiscard]] static float getAdaptiveEigenValueThreshold(const CovarianceCandidate& candidate);
+   [[nodiscard]] static bool isStaticObject(const cv::Mat& query, const cv::Mat& target, const cv::Mat& mask);
+   [[nodiscard]] bool isFeatureRepeated(CovarianceCandidate& candidate);
    void removeRepeatedRegion();
    void classifyCovariance(std::vector<cv::Rect>& fires, const cv::Mat& frame);
 };

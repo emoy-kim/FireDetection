@@ -32,7 +32,7 @@ private:
 
       FlowRateCandidate() : CandidateIndex( -1 ), MaxFlowLength( -1.0 ), 
       MinFlowPoint{ 1e+7f, 1e+7f }, MaxFlowPoint{ -1.0f, -1.0f } {}
-      FlowRateCandidate(const cv::Rect& region) : FlowRateCandidate() { Region = region; }
+      explicit FlowRateCandidate(const cv::Rect& region) : FlowRateCandidate() { Region = region; }
    };
 
    uint FrameCounter;
@@ -57,27 +57,27 @@ private:
    
    bool initializeFireCandidates(const std::vector<cv::Rect>& fires);
 
-   void updateMaxFlowLength(
+   static void updateMaxFlowLength(
       FlowRateCandidate& candidate, 
       const std::vector<cv::Point2f>& query_points, 
       const std::vector<cv::Point2f>& target_points, 
       const std::vector<uchar>& found_matches
-   ) const;
-   void updateFlowDeltas(
+   );
+   static void updateFlowDeltas(
       FlowRateCandidate& candidate, 
       const std::vector<cv::Point2f>& query_points, 
       const std::vector<cv::Point2f>& target_points, 
       const std::vector<uchar>& found_matches
-   ) const;
-   void findMinMaxFlowPoint(
+   );
+   static void findMinMaxFlowPoint(
       FlowRateCandidate& candidate, 
       const std::vector<cv::Point2f>& query_points, 
       const std::vector<cv::Point2f>& target_points, 
       const std::vector<uchar>& found_matches
-   ) const;
+   );
    void calculateFlowRate(FlowRateCandidate& candidate, const cv::Mat& frame, const cv::Mat& fire_region) const;
-   float getPCAOutlierYThreshold(const std::vector<cv::Point2f>& outlier_map_points) const;
-   void getPCAOutlierMapPoints(std::vector<cv::Point2f>& outlier_map_points, cv::PCA& pca, const FlowRateCandidate& candidate) const;
+   [[nodiscard]] static float getPCAOutlierYThreshold(const std::vector<cv::Point2f>& outlier_map_points);
+   static void getPCAOutlierMapPoints(std::vector<cv::Point2f>& outlier_map_points, cv::PCA& pca, const FlowRateCandidate& candidate);
    void extractPCAInlierOnly(cv::PCA& pca, cv::Mat& inlier, const FlowRateCandidate& candidate) const;
    void getEigenvalues(std::vector<float>& eigenvalues, const FlowRateCandidate& candidate) const;
    bool isTurbulentEnough(const FlowRateCandidate& candidate) const;

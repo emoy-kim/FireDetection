@@ -68,7 +68,7 @@ bool RChannelFireDetection::initializeFireCandidates(const std::vector<cv::Rect>
    return true;
 }
 
-cv::Mat RChannelFireDetection::getNormalizedHistogram(const cv::Mat& r_channel, const cv::Mat& mask) const
+cv::Mat RChannelFireDetection::getNormalizedHistogram(const cv::Mat& r_channel, const cv::Mat& mask)
 {
    cv::Mat histogram;
    const int hist_size = 256;
@@ -79,7 +79,7 @@ cv::Mat RChannelFireDetection::getNormalizedHistogram(const cv::Mat& r_channel, 
    return histogram;
 }
 
-double RChannelFireDetection::calculateWeightedMean(const cv::Mat& histogram, float min_frequency) const
+double RChannelFireDetection::calculateWeightedMean(const cv::Mat& histogram, float min_frequency)
 {
    double mean = 0.0;
    double sum_of_frequency_left_out = 0.0f;

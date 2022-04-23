@@ -65,7 +65,7 @@ void FlowRateFireDetection::updateMaxFlowLength(
    const std::vector<cv::Point2f>& query_points, 
    const std::vector<cv::Point2f>& target_points, 
    const std::vector<uchar>& found_matches
-) const
+)
 {
    for (uint i = 0; i < query_points.size(); ++i) {
       if (found_matches[i]) {
@@ -82,7 +82,7 @@ void FlowRateFireDetection::updateFlowDeltas(
    const std::vector<cv::Point2f>& query_points, 
    const std::vector<cv::Point2f>& target_points, 
    const std::vector<uchar>& found_matches
-) const
+)
 {
    for (uint i = 0; i < query_points.size(); ++i) {
       if (found_matches[i]) {
@@ -97,7 +97,7 @@ void FlowRateFireDetection::findMinMaxFlowPoint(
    const std::vector<cv::Point2f>& query_points, 
    const std::vector<cv::Point2f>& target_points, 
    const std::vector<uchar>& found_matches
-) const
+)
 {
    for (uint i = 0; i < query_points.size(); ++i) {
       if (found_matches[i]) {
@@ -200,15 +200,13 @@ void FlowRateFireDetection::drawPCAOutlierMap(
 }
 #endif
 
-float FlowRateFireDetection::getPCAOutlierYThreshold(const std::vector<cv::Point2f>& outlier_map_points) const
+float FlowRateFireDetection::getPCAOutlierYThreshold(const std::vector<cv::Point2f>& outlier_map_points)
 {
    float y_mean = 0.0f;
    for (const auto& point : outlier_map_points) {
       y_mean += point.y;
    }
-   if (!outlier_map_points.empty()) {
-      y_mean /= outlier_map_points.size();
-   }
+   if (!outlier_map_points.empty()) y_mean /= static_cast<float>(outlier_map_points.size());
    return y_mean * 5.0f;
 }
 
@@ -216,7 +214,7 @@ void FlowRateFireDetection::getPCAOutlierMapPoints(
    std::vector<cv::Point2f>& outlier_map_points, 
    cv::PCA& pca, 
    const FlowRateCandidate& candidate
-) const
+)
 {
    const int& data_num = candidate.Deltas.rows;
    outlier_map_points.resize( data_num );

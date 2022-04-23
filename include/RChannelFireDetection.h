@@ -26,7 +26,7 @@ private:
       std::vector<double> MeanPerturbation;
 
       RChannelCandidate() = default;
-      RChannelCandidate(const cv::Rect& region) { Region = region; }
+      explicit RChannelCandidate(const cv::Rect& region) { Region = region; }
    };
 
    uint FrameCounter;
@@ -47,9 +47,9 @@ private:
 
    bool initializeFireCandidates(const std::vector<cv::Rect>& fires);
 
-   cv::Mat getNormalizedHistogram(const cv::Mat& r_channel, const cv::Mat& mask) const;
-   double calculateWeightedMean(const cv::Mat& histogram, float min_frequency = 0.0f) const;
-   bool isPerturbingEnough(const RChannelCandidate& candidate, double min_intensity = 0.0) const;
+   [[nodiscard]] static cv::Mat getNormalizedHistogram(const cv::Mat& r_channel, const cv::Mat& mask);
+   [[nodiscard]] static double calculateWeightedMean(const cv::Mat& histogram, float min_frequency = 0.0f);
+   [[nodiscard]] bool isPerturbingEnough(const RChannelCandidate& candidate, double min_intensity = 0.0) const;
    void removeNonPerturbedRegion();
    void classifyRChannelHistogram(std::vector<cv::Rect>& fires, const cv::Mat& frame, const cv::Mat& fire_region);
 };

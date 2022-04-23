@@ -183,7 +183,7 @@ void TrainedColorFireDetection::updateResultMapAndFireRegion(cv::Mat& fire_regio
 #endif
 }
 
-void TrainedColorFireDetection::getFirePosition(std::vector<cv::Rect>& fires, const cv::Mat& fire_region) const
+void TrainedColorFireDetection::getFirePosition(std::vector<cv::Rect>& fires, const cv::Mat& fire_region)
 {
    std::vector<std::vector<cv::Point>> contours;
    cv::Mat contoured = fire_region.clone();

@@ -157,7 +157,7 @@ void CovarianceFireDetection::getRGBCovariance(
    std::vector<double>& rgb_covariance, 
    const cv::Mat& fire_area, 
    const cv::Mat& fire_mask
-) const
+)
 {
    std::vector<double> sums(3, 0.0), square_of_mean(6, 0.0);
    uint valid_num = 0;
@@ -201,7 +201,7 @@ void CovarianceFireDetection::getSpatioTemporalCovariance(
    std::vector<double>& st_covariance, 
    const std::vector<cv::Mat>& fire_area_set, 
    const cv::Mat& fire_mask
-) const
+)
 {
    std::vector<double> sums(5, 0.0), square_of_mean(15, 0.0);
    uint valid_num = 0;
@@ -277,7 +277,7 @@ void CovarianceFireDetection::findMinMaxFlowPoint(
    const std::vector<cv::Point2f>& query_points, 
    const std::vector<cv::Point2f>& target_points, 
    const std::vector<uchar>& found_matches
-) const
+)
 {
    for (uint i = 0; i < query_points.size(); ++i) {
       if (found_matches[i]) {
@@ -335,7 +335,7 @@ bool CovarianceFireDetection::getDeltasFromSparseOpticalFlowMatches(
 void CovarianceFireDetection::getEigenvaluesOfCovariance(
    std::vector<float>& eigenvalues, 
    const CovarianceCandidate& candidate
-) const
+)
 {
    eigenvalues.resize( 2, 0.0f );
    if (candidate.Deltas.rows < 2) return;
@@ -355,7 +355,7 @@ bool CovarianceFireDetection::areEigenvaluesSmallAndSimilar(std::vector<float>& 
    return is_similar;
 }
 
-float CovarianceFireDetection::getAdaptiveEigenValueThreshold(const CovarianceCandidate& candidate) const
+float CovarianceFireDetection::getAdaptiveEigenValueThreshold(const CovarianceCandidate& candidate)
 {
    float max_variance = 1e+7f;
    if (candidate.MinFlowPoint.x < candidate.MaxFlowPoint.x) {
@@ -368,7 +368,7 @@ float CovarianceFireDetection::getAdaptiveEigenValueThreshold(const CovarianceCa
    return threshold;
 }
 
-bool CovarianceFireDetection::isStaticObject(const cv::Mat& query, const cv::Mat& target, const cv::Mat& mask) const
+bool CovarianceFireDetection::isStaticObject(const cv::Mat& query, const cv::Mat& target, const cv::Mat& mask)
 {
    if (query.cols == 0 || query.rows == 0) return true;
    

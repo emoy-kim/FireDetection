@@ -43,14 +43,14 @@ private:
 
    void initialize();
 
-   double calculateProbabilityBasedColor(
+   [[nodiscard]] double calculateProbabilityBasedColor(
       int curr_idx, 
       const cv::Vec3b* upper_ptr, 
       const cv::Vec3b* curr_ptr, 
       const cv::Vec3b* lower_ptr
    );
    void findMovingPixels(cv::Mat& probability_map, const cv::Mat& blurred_frame);
-   static bool isLocalMaximum(int curr_idx, const double* upper_ptr, const double* curr_ptr, const double* lower_ptr);
+   [[nodiscard]] static bool isLocalMaximum(int curr_idx, const double* upper_ptr, const double* curr_ptr, const double* lower_ptr);
    void findTopProbabilities(std::vector<std::pair<cv::Point, double>>& local_maxima);
    void findTopOfLocalMaxima(const cv::Mat& probability_map);
    void classifyColorAndMotion(const cv::Mat& frame);
@@ -58,5 +58,5 @@ private:
    void createBlocksFromCandidates(cv::Mat& result_map, int block_size);
    void updateResultMapAndFireRegion(cv::Mat& fire_region);
 
-   void getFirePosition(std::vector<cv::Rect>& fires, const cv::Mat& fire_region) const;
+   static void getFirePosition(std::vector<cv::Rect>& fires, const cv::Mat& fire_region);
 };
